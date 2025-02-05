@@ -1,0 +1,157 @@
+---
+title: "Machine Learning Pset 2, Daniel Avila"
+format: html
+---
+
+# 1. 
+
+(a)
+We would expect for the LDA to perform better whne the Bayes decision boundary is linear
+because the LDA would better estimate the true underlying decision bondaries/model. 
+
+(b)
+If the Bayes decision boundary is non-linear, then the QDA offers the flexibilty that better matches the underlying decision boundaries. Therefore QDA would be better. 
+Note however that because we dont know the actual decision true values underneath, then we would not truthfully whether QDA or LDA is better except for how our data looks.
+
+(c)
+The more data that we have, the better the accuracy of our sample means and variances relative to the true means and variances. Therefore would expect that the LDA would continue to get better with more data. 
+
+QDA requires lots of data because we are calculating variances and covariances for each of the classes. Therefore, as we have more data, QDA becomes an option and it gives better test predictions.
+
+Regarding which gets better relative to the other,  the answer is still dependant on the underlying true Bayes decision boundary. However we would expect that QDA gets better relative to LDA.
+
+(d)
+False, because we are limited by how much data we have. Therefore, the QDA can be limited by the number of covariates that it can produce, which will eat away at the degrees of freedom of the model. Therefore, if we have too few degrees of freedom, we can be overfitting to the noise of the data, which would actually make our QDA worse relaive to LDA. 
+
+
+# 2.
+(a)
+Logit model: (receive an A = 1) = -6 + .05(hours studied) + 1(undergrad GPA)
+
+-6 + .05(hours studied = 40) + 1(undergrad GPA = 3.5) = -.5
+
+odds = 1/(1 + e^(-.5))
+odds = .3775 or approximately 38% probability of receiving an A in the class.
+
+(b)
+
+.5 = 1/(1 + e^(log odds))
+1 + e^((-6 + .05(hours studied) + 3.5)) = 2
+hours studied = 50
+
+# 3.
+
+
+mean dividend companies: 10
+mean without dividend companies: 0
+variance: 36
+80% issued dividends
+20% did not issue dividends
+predict binary dividend, profit = 4
+
+discriminant function, dividend = ln(.8) - 10^2/2(36) + 10/36(4)
+discriminant function = -.5009
+
+discriminant function, no dividend = ln(.2) - 0 + 0
+discriminant function, no dividend = -1.6
+
+calculating probabilities:
+
+exp^(discriminant function, dividend = -.5009) / exp^(-.5009 - 1.6) = .75
+
+exp^(discriminant function, no dividend = -1.5) / exp^(-.5009 - 1.6) = .25
+
+A company with percentage profit of x = 4 will issue a dividend with probability 75%. 
+
+
+# 4.
+(a)
+```{python}
+import pandas as pd
+import numpy as np
+import os
+import seaborn as sns
+
+os.chdir("C:/Users/AVILA/OneDrive/Documents/Github/Machine-Learning--Harris/Problem-Set-2")
+
+auto_df = pd.read_csv("Data-Auto.csv")
+auto_df = auto_df.drop("Unnamed: 0", axis = 1)
+default_df = pd.read_csv("Data-Default.csv")
+
+```
+
+(b)
+```{python}
+auto_df.loc[auto_df["mpg"] > np.median(auto_df["mpg"]), "mpg01"] = 1
+auto_df["mpg01"] = auto_df["mpg01"].fillna(0)
+
+
+sns.pairplot(auto_df)
+```
+
+mpg01 seems to be correlated with...
+1. horsepower
+2. weight
+3. acceleration,
+4. displacement
+
+The reason for thinking that these are the 4 primary predictive features is because, looking at the pairplot graph, we can see that there are sections of mpg01 = 1 that do not overlap with mpg01 = 0 at all. This is essentially a plot of a logit function, which indicates probabilities (visible in the last row of the pairplot). 
+
+(c)
+
+```{python}
+from sklearn.model_selection import train_test_split
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+
+X = auto_df.loc[:, ["horsepower", "weight", "acceleration", "displacement"]]
+X_train, X_test, y_train, y_test = train_test_split(X, auto_df["mpg01"], test_size = .5, random_state = 22)
+```
+
+(d)
+```{python}
+modelLDA = LinearDiscriminantAnalysis()
+modelLDA.fit(X_train, y_train)
+
+print(f"model accuracy: {round(modelLDA.score(X_test, y_test), 4) * 100}%")
+print(f"model test error: {round(1-modelLDA.score(X_test, y_test), 4) * 100}%")
+```
+
+(e)
+```{python}
+modelQDA = QuadraticDiscriminantAnalysis()
+modelQDA.fit(X_train, y_train)
+
+print(f"model accuracy: {round(modelQDA.score(X_test, y_test), 4) * 100}%")
+print(f"model test error: {round(1-modelQDA.score(X_test, y_test), 4) * 100}%")
+
+```
+
+(f)
+```{python}
+from sklearn.linear_model import LogisticRegression
+logit = LogisticRegression()
+logit.fit(X_train, y_train)
+
+print(f"model accuracy: {round(logit.score(X_test, y_test), 4) * 100}%")
+print(f"model test error: {round(1-logit.score(X_test, y_test), 4) * 100}%")
+
+```
+
+(g)
+```{python}
+from sklearn.naive_bayes import GaussianNB
+
+gnb = GaussianNB()
+gnb.fit(X_train, y_train)
+
+print(f"model accuracy: {round(gnb.score(X_test, y_test), 4) * 100}%")
+print(f"model test error: {round(1-gnb.score(X_test, y_test), 4) * 100}%")
+```
+
+# 5. 
+(a)
+```{python}
+
+
+```
