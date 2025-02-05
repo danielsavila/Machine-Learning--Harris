@@ -152,6 +152,18 @@ print(f"model test error: {round(1-gnb.score(X_test, y_test), 4) * 100}%")
 # 5. 
 (a)
 ```{python}
+from sklearn.metrics import confusion_matrix
+logit = LogisticRegression()
+X_train, X_test, y_train, y_test = train_test_split(default_df.loc[:, "balance":], default_df["default"], test_size = .3, random_state=42)
 
+logit.fit(X_train, y_train)
+y_prob = logit.predict_proba(X_test)[:, 1]
+y_prob = (y_prob > .5).astype(int)
+y_test = (y_test == "Yes").astype(int)
 
+matrix = confusion_matrix(y_test, y_prob)
+fn = matrix[0,1]
+fp = matrix[1, 0]
+error_rate = (fp + fn) / y_test.shape[0]
+f"error rate: {round(error_rate, 4) * 100}%"
 ```
