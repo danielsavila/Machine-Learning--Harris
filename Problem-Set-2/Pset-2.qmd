@@ -150,20 +150,47 @@ print(f"model test error: {round(1-gnb.score(X_test, y_test), 4) * 100}%")
 ```
 
 # 5. 
-(a)
+(a), (b)
 ```{python}
+
 from sklearn.metrics import confusion_matrix
 logit = LogisticRegression()
-X_train, X_test, y_train, y_test = train_test_split(default_df.loc[:, "balance":], default_df["default"], test_size = .3, random_state=42)
 
-logit.fit(X_train, y_train)
-y_prob = logit.predict_proba(X_test)[:, 1]
-y_prob = (y_prob > .5).astype(int)
-y_test = (y_test == "Yes").astype(int)
 
-matrix = confusion_matrix(y_test, y_prob)
-fn = matrix[0,1]
-fp = matrix[1, 0]
-error_rate = (fp + fn) / y_test.shape[0]
-f"error rate: {round(error_rate, 4) * 100}%"
+def logit_func(random_seed = 42): 
+    X_train, X_test, y_train, y_test = train_test_split(default_df.loc[:, "balance":], default_df["default"], test_size = .3, random_state=random_seed, shuffle = True)
+
+    logit.fit(X_train, y_train)
+    y_prob = logit.predict_proba(X_test)[:, 1]
+    y_prob = (y_prob > .5).astype(int)
+    y_test = (y_test == "Yes").astype(int)
+
+    matrix = confusion_matrix(y_test, y_prob)
+    fn = matrix[0,1]
+    fp = matrix[1, 0]
+    error_rate = (fp + fn) / y_test.shape[0]
+
+    return f"error rate: {round(error_rate, 4) * 100}%"
+
+logit_func()
 ```
+
+
+(c)
+```{python}
+print(logit_func(random_seed = 2))
+
+print(logit_func(random_seed = 6))
+
+print(logit_func(random_seed = 9))
+```
+
+We can see from the different error rates that, depending on the data used in the training set vs. validation set, we get different outcomes in the error rates of our model. What is happening is that the model is producing slightly different paramaters based on the data that it is trained on. Additionally, once we push the validation data through the fitted model, each validation set has different data points based on the different seed we use. Therefore both the parameters of our logit model, and the validation data will be different, which leads to different error rates. What is good is that that, across the 3 models, our error rate is closely bundled around the 3% value, which indicates that our model is performing well to the data.
+
+(d)
+```{python}
+default_df["dummy"] = np.where(default_df["student"] == "Yes", 1, 0)
+logit_func(random_seed = 42)
+```
+
+Including the dummy variable did not seem to improve our results in anyway. Note that in the first set of code, I have coded the features such that all features past the "balance" feature in the dataset will be included. When we add the "dummy" feature in this round, that variable gets added to the right of the "balance" feature, which means it is included here. Therefore, since the error rate has not decreased relative to the previous models, we can say that including the "dummy" feature is not adding much, if anything, to improving the quality of predictions of our model. 
