@@ -1,6 +1,6 @@
 ---
 title: "Machine Learning Pset 2, Daniel Avila"
-format: html
+format: pdf
 ---
 
 # 1. 
@@ -72,7 +72,7 @@ import numpy as np
 import os
 import seaborn as sns
 
-os.chdir("C:/Users/AVILA/OneDrive/Documents/Github/Machine-Learning--Harris/Problem-Set-2")
+#os.chdir("C:/Users/AVILA/OneDrive/Documents/Github/Machine-Learning--Harris/Problem-Set-2")
 
 auto_df = pd.read_csv("Data-Auto.csv")
 auto_df = auto_df.drop("Unnamed: 0", axis = 1)
