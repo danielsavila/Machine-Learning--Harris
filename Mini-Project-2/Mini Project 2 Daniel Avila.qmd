@@ -3,3 +3,129 @@ title: "Mini Project 2, Daniel Avila"
 format: pdf
 ---
 
+```{python}
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression 
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, roc_auc_score
+
+os.chdir("c:/Users/danie/OneDrive/Documents/GitHub/Machine-Learning--Harris/Mini-Project-2")
+
+df = pd.read_csv("Data-Audit.csv")
+
+```
+
+# 2.
+(a)
+The 3 variables that I could see having an impact on the true model from our dataset would be 
+the sector the firm is in, PARA A (which is the discrepancies found in planned expenditure), 
+PARA B (which is the discrepancies found in unplanned expenditures), and Money Value (which
+is the firm revenue in the past 2 years). Since I dont know how the Inherent Risk or the Score 
+variables are produced, it is hard for me to argue that those would have an impact on the true
+model, however some level of risk measurement is valuable to predictive models. I believe these
+features are good guesses at the true underlying relationship because 1. Para A contains
+discrepancies that you would expect, which is self reported and could be manipulated, 2. Para B 
+is also self reported and unexpected expenses are by definition variable, which means that there 
+exists the opportunity to "fudge" these numbers, and 3. the firm income plays a big role because
+significant changes in either the positive or negative direction for firm income could incentivize 
+a firm to engage in tax evasion, i.e. large positive income changes would incentivize a firm to try
+and keep more of their revenue, while large negative income changes would incentivize a firm to try
+and increase the amount of "losses" which would reduce their tax burden.
+
+If we are considering other variables outside of this dataset, we might be interested in whether
+there was a new CEO (who would be incentivized to show company performance improvements, which 
+could be done through financial manipulation), an unusually large number of "consulting" or "legal" 
+contracts...etc.
+
+(b)
+The LPM would have biased estimates without the interaction term, because the interaction term
+would provide the "boosted" additional effect of both the individual variables and the interaction. 
+When the interaction term is missing, that would indicate an understimate of the true effect.
+
+KNN would have an advantage in this senario bacause KNN is not dependent on these interaction terms.
+KNN is interested in calculating the centroid of a series of data points relative to the distance 
+between other datapoints to produce groupings. Therefore, if the firms that are cheating on their tax 
+returns are displaying similar charactaristics through the data, then we would see cheating firms 
+grouped together in a way that KNNN would be able to catch. 
+
+# 3.
+(a)
+```{python}
+print(f"df shape before dropping na's: {df.shape}")
+df = df.dropna()
+print(f"df shape after dropping na's: {df.shape}")
+
+X_train, X_test, y_train, y_test = train_test_split(df.loc[:, "Sector_score":"Audit_Risk"], df.loc[:, "Risk"], test_size = .5, random_state=13)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+print(f"model score: {model.score(X_test, y_test)}")
+
+y_pred = model.predict(X_test)
+y_pred_5 = np.where(y_pred > .5 , 1, 0)
+y_pred_6 = np.where(y_pred > .6 , 1, 0)
+
+print(f"confusion matrix, .5: ")
+print(f"{confusion_matrix(y_test, y_pred_5)}")
+tn5, fp5, fm5, tp5 = confusion_matrix(y_test, y_pred_5).ravel()
+
+```
+
+(b)
+```{python}
+print(f"confusion matrix, .6: ")
+print(f"{confusion_matrix(y_test, y_pred_6)}")
+tn6, fp6, fn6, tp6 = confusion_matrix(y_test, y_pred_6).ravel()
+
+```
+
+(c)
+```{python}
+error_rate_5 = (fp5 + fn5) / (tn5 + tp5 + fn5 + fp5)
+print(f"error rate for .5 threshold: {round(error_rate_5, 4)*100}%")
+
+error_rate_6 = (fp6 + fn6) / (tn6 + tp6 + fn6 + fp6)
+print(f"error rate for .6 threshold: {round(error_rate_6, 4)*100}%")
+```
+
+We find that the .6 threshold has a lower error rate than the .5 threshold, therefore 
+we would expect the .6 threshold to provide more accurate predictions.
+
+(d)
+The proportion of the firms that were predicted to evade their taxes and actually did
+evade their taxes would be the inverse of the error rate. Therefore, for the .5 threshold, 
+we have ~72% of predicted firms actually evading their taxes. For the .6 threshold, we 
+have ~89% of predicted firms actually evading their taxes. 
+
+(e)
+```{python}
+fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, y_pred)
+print(f"ROC AUC Score: {roc_auc}")
+plt.plot(fpr, tpr, color="blue", label = f"ROC curve (AUC = {roc_auc:.2f})")
+plt.plot([0,1], [0,1], color = 'gray', linestyle = "--")
+plt.legend(loc = "lower right")
+plt.title("ROC Curve")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.show()
+```
+
+# 4.
+In this context, false negatives mean that a firm was labeled as not committing tax fraud, 
+but actuallly was commiting tax fraud. Therefore these are opportunity costs to the Indian govenrment
+in lost revenue, but the Indian govenrment is not spending resources prosecuting them either.
+Alternatively, a false positive means that the Indian govenrment is forced to allocate resources,
+but there is uncertainty in whether the individual is actually committing fraud or not.
+
+Therefore, I believe that, in this context, it is better for the Indian government to not worry about
+false negatives as much as false positives because false negatives indicate lost revenue and no cost,
+but false positives indicate cost incurred by redirecting administrative resources and no increase in
+tax revenue.
+
+# 5.
+(a)
