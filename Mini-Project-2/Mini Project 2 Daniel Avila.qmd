@@ -26,7 +26,7 @@ the sector the firm is in, PARA A (which is the discrepancies found in planned e
 PARA B (which is the discrepancies found in unplanned expenditures), and Money Value (which
 is the firm revenue in the past 2 years). Since I dont know how the Inherent Risk or the Score 
 variables are produced, it is hard for me to argue that those would have an impact on the true
-model, however some level of risk measurement is valuable to predictive models. I believe these
+model, however some level of risk measurement is valuable to predictive models in these contexts. I believe these
 features are good guesses at the true underlying relationship because 1. Para A contains
 discrepancies that you would expect, which is self reported and could be manipulated, 2. Para B 
 is also self reported and unexpected expenses are by definition variable, which means that there 
@@ -63,20 +63,23 @@ X_train, X_test, y_train, y_test = train_test_split(df.loc[:, "Sector_score":"Au
 
 model = LinearRegression()
 model.fit(X_train, y_train)
+print()
 print(f"model score: {model.score(X_test, y_test)}")
 
 y_pred = model.predict(X_test)
 y_pred_5 = np.where(y_pred > .5 , 1, 0)
 y_pred_6 = np.where(y_pred > .6 , 1, 0)
 
+print()
 print(f"confusion matrix, .5: ")
 print(f"{confusion_matrix(y_test, y_pred_5)}")
-tn5, fp5, fm5, tp5 = confusion_matrix(y_test, y_pred_5).ravel()
+tn5, fp5, fn5, tp5 = confusion_matrix(y_test, y_pred_5).ravel()
 
 ```
 
 (b)
 ```{python}
+
 print(f"confusion matrix, .6: ")
 print(f"{confusion_matrix(y_test, y_pred_6)}")
 tn6, fp6, fn6, tp6 = confusion_matrix(y_test, y_pred_6).ravel()
@@ -92,13 +95,21 @@ error_rate_6 = (fp6 + fn6) / (tn6 + tp6 + fn6 + fp6)
 print(f"error rate for .6 threshold: {round(error_rate_6, 4)*100}%")
 ```
 
-We find that the .6 threshold has a lower error rate than the .5 threshold, therefore 
-we would expect the .6 threshold to provide more accurate predictions.
+We find that the .5 threshold has a lower error rate than the .6 threshold, therefore 
+we would expect the .5 threshold to provide more accurate predictions.
 
 (d)
+```{python}
+evasion5 = tp5 / (fp5 + tp5)
+print(f"{round(evasion5, 2) * 100} % of predicted firms actually evaded their taxes, .5 threshold")
+
+evasion6 = tp6 / (fp6 + tp6)
+print(f"{round(evasion6, 2) * 100} % of predicted firms actually evaded their taxes, .6 threshold.")
+
+```
 The proportion of the firms that were predicted to evade their taxes and actually did
 evade their taxes would be the inverse of the error rate. Therefore, for the .5 threshold, 
-we have ~72% of predicted firms actually evading their taxes. For the .6 threshold, we 
+we have ~90% of predicted firms actually evading their taxes. For the .6 threshold, we 
 have ~89% of predicted firms actually evading their taxes. 
 
 (e)
@@ -129,3 +140,81 @@ tax revenue.
 
 # 5.
 (a)
+```{python}
+from sklearn.neighbors import KNeighborsClassifier 
+knn = KNeighborsClassifier(n_neighbors = 5)
+
+knn.fit(X_train, y_train)
+y_pred = knn.predict(X_test)
+print(f"knn confusion matrix:")
+print(f"{confusion_matrix(y_test, y_pred)}")
+
+```
+
+(b)
+```{python}
+tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+error_rate = (fp + fn) / (tn + fp + fn + tp)
+print(f"knn error rate: {round(error_rate, 2)*100} %")
+```
+Our predictions are extremely accurate, predicting correctly with 96% accuracy.
+
+(c)
+```{python}
+evasion = tp / (fp + tp)
+print(f"{round(evasion, 2) * 100} % of firms that were predicted to evade their taxes actually evaded their taxes")
+
+```
+
+# 6. 
+(a)
+```{python}
+# scaling the dataset, by subtracting away the mean and dividing by standard deviation
+
+df_copy = df.copy()
+for column in df_copy.columns:
+    # using z-score scaling
+    df_copy[column] = (df_copy[column] - np.mean(df_copy[column])) / np.std(df_copy[column])
+
+
+X_train, X_test, y_train, y_test = train_test_split(df_copy.loc[:, "Sector_score":"Audit_Risk"], df["Risk"], test_size= .5)
+
+knn.fit(X_train, y_train)
+y_pred = knn.predict(X_test)
+print("confusion matrix:")
+print(confusion_matrix(y_pred, y_test))
+```
+
+(b)
+```{python}
+tn, fp, fn, tp = confusion_matrix(y_pred, y_test).ravel()
+print(f"knn scaled error rate:")
+print(f"{round(error_rate, 2) * 100} %")
+```
+Our predictions have a 93% accuracy rate.
+
+(c)
+```{python}
+evasion = tp / (fp + tp)
+print(f"{round(evasion, 2) * 100} % of firms that were predicted to evade their taxes actually evaded their taxes")
+```
+
+# 7. 
+The scaled data gives us much better predictions in that it reduces the number of false negatives, as well 
+as slightly reducing the number of false positives. Therefore we are interested in using the scaled KNN model 
+instead of the non-scaled KNN model. 
+
+I believe that the reason for the better predictions in the scaled KNN model is that KNN is based on the distance
+of each data point relative to the group. Therefore, in the non-scaled dataset, some of the features are on completely
+different scales relative to other features. Therefore, the distance between one feature and the next will be huge
+where as in the scaled model, all features are at the same scale of standard deviations away from the mean.
+Therefore we are able to get "more information" across all of our features instead of over relying on specific features
+that will bias our predictions. 
+
+# 8.
+```{python}
+from sklearn.model_selection import KFold
+kf = KFold(n_splits = 5, shuffle = True)
+for split in kf.split(df_copy.loc[:, "Sector_score":"Audit_Risk"], df["Risk"])
+
+```
