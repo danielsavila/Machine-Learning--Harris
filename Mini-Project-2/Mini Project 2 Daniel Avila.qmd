@@ -144,6 +144,10 @@ tax revenue.
 from sklearn.neighbors import KNeighborsClassifier 
 knn = KNeighborsClassifier(n_neighbors = 5)
 
+df["target"] = np.where(df["Risk"] > .5, 1, 0)
+X_train, X_test, y_train, y_test = train_test_split(df.loc[:, "Sector_score":"Audit_Risk"], df.loc[:, "target"], test_size = .5, random_state=13)
+
+
 knn.fit(X_train, y_train)
 y_pred = knn.predict(X_test)
 print(f"knn confusion matrix:")
@@ -177,7 +181,7 @@ for column in df_copy.columns:
     df_copy[column] = (df_copy[column] - np.mean(df_copy[column])) / np.std(df_copy[column])
 
 
-X_train, X_test, y_train, y_test = train_test_split(df_copy.loc[:, "Sector_score":"Audit_Risk"], df["Risk"], test_size= .5)
+X_train, X_test, y_train, y_test = train_test_split(df_copy.loc[:, "Sector_score":"Audit_Risk"], df["target"], test_size= .5)
 
 knn.fit(X_train, y_train)
 y_pred = knn.predict(X_test)
@@ -191,7 +195,7 @@ tn, fp, fn, tp = confusion_matrix(y_pred, y_test).ravel()
 print(f"knn scaled error rate:")
 print(f"{round(error_rate, 2) * 100} %")
 ```
-Our predictions have a 93% accuracy rate.
+Our predictions have a 96% accuracy rate.
 
 (c)
 ```{python}
@@ -212,9 +216,27 @@ Therefore we are able to get "more information" across all of our features inste
 that will bias our predictions. 
 
 # 8.
-```{python}
-from sklearn.model_selection import KFold
-kf = KFold(n_splits = 5, shuffle = True)
-for split in kf.split(df_copy.loc[:, "Sector_score":"Audit_Risk"], df["Risk"])
 
+```{python}
+from sklearn.model_selection import cross_validate
+
+features = df_copy.loc[:, "Sector_score":"Audit_Risk"]
+target = df.loc[:, "target"]
+
+scores = cross_validate(knn, features, target, cv = 5)
+print(f"cv scores/accuracy array (test):{scores["test_score"]}")
+print(f"mean cv score/accuracy (test): {round(np.mean(scores["test_score"]), 2) * 100}%")
+print()
+print(f"error rates (test): {1- scores["test_score"]}")
+print(f"mean error rate (test): {100-round(np.mean(scores["test_score"]), 2) * 100}%")
 ```
+
+We found that the first k (k = 1) yields the lowest error rate, an error rate of ~2.5%
+
+# 9.
+The "Risk" column is produced by determinig whether the firm evaded taxes as a result of an audit. Therefore,
+the dataset that we have is limited to firms that were deemed to be audit worthy in the first place, and therefore
+contains firms that were audit worthy + did or did not commit tax evasion. What we dont have in this dataset is 
+the individuals who were not audit worthy, but DID commit tax evasion. Therefore, the current model that we have
+will get better at predicting thsoe firms which we already thought were commiting tax evasion. We will not get better
+at finding cases which we did not expect, or would look good on these metrics but are in fact evading taxes. 
