@@ -3,5 +3,36 @@ title: "Problem Set 3"
 format: pdf
 ---
 
+# 1.
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+import os
+import statsmodels.api as sm
+import seaborn as sns
 
+os.chdir("C:/Users/AVILA/OneDrive/Documents/GitHub/Machine-Learning--Harris/Problem-Set-3")
+
+default = pd.read_csv("Data-Default.csv")
+default["student"] = np.where(default["student"] == "No", 0, 1)
+default["default"] = np.where(default["default"] == "Yes", 1, 0)
+```
+
+```{python}
+from sklearn.metrics import confusion_matrix
+X_train, X_test, y_train, y_test = train_test_split(default.loc[:, ["income", "balance"]], default["default"])
+
+logit = LogisticRegression()
+logit.fit(X_train, y_train)
+logit.coef_
+y_pred = logit.predict(X_test)
+logit.score(X_test, y_test)
+
+confusion_matrix(y_test, y_pred)
+
+sm.GLM(default["default"], default[["income", "balance"]])
+```
 
