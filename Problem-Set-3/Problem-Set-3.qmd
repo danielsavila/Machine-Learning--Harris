@@ -21,18 +21,33 @@ default["student"] = np.where(default["student"] == "No", 0, 1)
 default["default"] = np.where(default["default"] == "Yes", 1, 0)
 ```
 
+
+(a)
 ```{python}
-from sklearn.metrics import confusion_matrix
-X_train, X_test, y_train, y_test = train_test_split(default.loc[:, ["income", "balance"]], default["default"])
+X = default[["income", "balance"]]
+X = sm.add_constant(X)
 
-logit = LogisticRegression()
-logit.fit(X_train, y_train)
-logit.coef_
-y_pred = logit.predict(X_test)
-logit.score(X_test, y_test)
-
-confusion_matrix(y_test, y_pred)
-
-sm.GLM(default["default"], default[["income", "balance"]])
+model = sm.Logit(default["default"], X)
+results = model.fit()
+results.summary()
 ```
 
+The standard error for income and balance are exceptionally small, with income's SE at 4.99e-06, and balance's SE
+so small the summary function is regestering it as 0. 
+
+
+(b)
+```{python}
+def boot_fn(df, n, seed):
+    columns = df.columns
+    rng = np.random.default_rng(seed)    # allows you to set your seed
+    indices = rng.choice(df.index,     # Use the dataset's indices as the input
+                         int(n),         # Number of indices per sample
+                         replace=True    # Draw samples with replacement
+                        )
+    return indices
+
+seed = 23
+boot_fn(default, default.shape[0], seed)
+
+```
