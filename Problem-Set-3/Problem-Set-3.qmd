@@ -1,0 +1,53 @@
+---
+title: "Problem Set 3"
+format: pdf
+---
+
+# 1.
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+import os
+import statsmodels.api as sm
+import seaborn as sns
+
+os.chdir("C:/Users/AVILA/OneDrive/Documents/GitHub/Machine-Learning--Harris/Problem-Set-3")
+
+default = pd.read_csv("Data-Default.csv")
+default["student"] = np.where(default["student"] == "No", 0, 1)
+default["default"] = np.where(default["default"] == "Yes", 1, 0)
+```
+
+
+(a)
+```{python}
+X = default[["income", "balance"]]
+X = sm.add_constant(X)
+
+model = sm.Logit(default["default"], X)
+results = model.fit()
+results.summary()
+```
+
+The standard error for income and balance are exceptionally small, with income's SE at 4.99e-06, and balance's SE
+so small the summary function is regestering it as 0. 
+
+
+(b)
+```{python}
+def boot_fn(df, n, seed):
+    columns = df.columns
+    rng = np.random.default_rng(seed)    # allows you to set your seed
+    indices = rng.choice(df.index,     # Use the dataset's indices as the input
+                         int(n),         # Number of indices per sample
+                         replace=True    # Draw samples with replacement
+                        )
+    return indices
+
+seed = 23
+boot_fn(default, default.shape[0], seed)
+
+```
