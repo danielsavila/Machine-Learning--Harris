@@ -14,11 +14,13 @@ import os
 import statsmodels.api as sm
 import seaborn as sns
 
-os.chdir("C:/Users/AVILA/OneDrive/Documents/GitHub/Machine-Learning--Harris/Problem-Set-3")
+os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Problem-set-3")
 
 default = pd.read_csv("Data-Default.csv")
 default["student"] = np.where(default["student"] == "No", 0, 1)
 default["default"] = np.where(default["default"] == "Yes", 1, 0)
+default = default.reset_index()
+
 ```
 
 
@@ -32,22 +34,62 @@ results = model.fit()
 results.summary()
 ```
 
-The standard error for income and balance are exceptionally small, with income's SE at 4.99e-06, and balance's SE
+The standard error for income and balance are exceptionally small, with "income's" SE at 4.99e-06, and "balance's" SE
 so small the summary function is regestering it as 0. 
 
 
 (b)
 ```{python}
-def boot_fn(df, n, seed):
-    columns = df.columns
+
+def get_indices(data, n, seed):
     rng = np.random.default_rng(seed)    # allows you to set your seed
-    indices = rng.choice(df.index,     # Use the dataset's indices as the input
+    indices = rng.choice(data.index,     # Use the dataset's indices as the input
                          int(n),         # Number of indices per sample
                          replace=True    # Draw samples with replacement
                         )
     return indices
 
-seed = 23
-boot_fn(default, default.shape[0], seed)
+def boot_fn(df, index):
+    sampled_df = df.loc[index]
+    y = sampled_df["default"]
+    x = sampled_df[["income", "balance"]]
+    x - sm.add_constant(x)
+
+    model = sm.Logit(y, x)
+    results = model.fit(disp = False)
+    coefficients = results.params
+    income = coefficients.iloc[0]
+    balance = coefficients.iloc[1]
+    return income, balance
+
+income, balance = boot_fn(default, get_indices(default, 1000, 32))
+
+
+income, balance = boot_fn(default, default["index"])
+
+print(f"income: {income}")
+print(f"balance: {balance}")
+
+
+```
+
+(c)
+```{python}
+bootstrap_means_income = np.zeros(1000)
+bootstrap_means_balance = np.zeros(1000)
+
+for i in range(1000):
+    chosen_index = np.random.choice(default["index"], size = default.shape[0], replace = True)
+    sample = default.loc[chosen_index]
+    result = boot_fn(sample, sample["index"])
+    bootstrap_means_income[i] = result[0]
+    bootstrap_means_balance[i] = result[1]
+
+print()
+print(f"Mean coefficient value, income:  {np.mean(bootstrap_means_income)}")
+print(f"Mean coefficient value, balance: {np.mean(bootstrap_means_balance)}")
+print()
+print(f"Std Income: {np.std(bootstrap_means_income)}")
+print(f"Std Balance: {np.std(bootstrap_means_balance)}")
 
 ```
