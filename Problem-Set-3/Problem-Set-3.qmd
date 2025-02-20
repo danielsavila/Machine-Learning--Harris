@@ -53,19 +53,16 @@ def boot_fn(df, index):
     sampled_df = df.loc[index]
     y = sampled_df["default"]
     x = sampled_df[["income", "balance"]]
-    x - sm.add_constant(x)
+    x = sm.add_constant(x)
 
     model = sm.Logit(y, x)
     results = model.fit(disp = False)
     coefficients = results.params
-    income = coefficients.iloc[0]
-    balance = coefficients.iloc[1]
+    income = coefficients.iloc[1]
+    balance = coefficients.iloc[2]
     return income, balance
 
 income, balance = boot_fn(default, get_indices(default, 1000, 32))
-
-
-income, balance = boot_fn(default, default["index"])
 
 print(f"income: {income}")
 print(f"balance: {balance}")
@@ -93,3 +90,25 @@ print(f"Std Income: {np.std(bootstrap_means_income)}")
 print(f"Std Balance: {np.std(bootstrap_means_balance)}")
 
 ```
+
+(d)
+These values are nearly spot on, with the standard errors being very similar as well. The only thing ot notice is that the standard error of the inome variable using bootstrapping is signfiicantly larger than that provided via the regression estimate, which indicates that there is more uncertainty from the bootstrapping method. 
+
+# 2. 
+(a)
+```{python}
+rng = np.random.default_rng(1)
+x = rng.normal(size = 100)
+y = x - 2 * x**2 + rng.normal(size = 100)
+
+```
+
+n is the size of the dataset, which in this case is 100. P is the parameters, of which there are 2, X, and x^2. 
+
+(b)
+```{python}
+plt.scatter(x, y)
+plt.show()
+```
+
+The relationship between the two variables is parabolic (which is exactly to be expected) and that there is some grouping of variables between -1 and 1 (which is coming from the normal variation we included in the rng.normal() command.)
