@@ -8,7 +8,7 @@ format: pdf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.model_selection import train_test_split
 import os
 import statsmodels.api as sm
@@ -112,3 +112,93 @@ plt.show()
 ```
 
 The relationship between the two variables is parabolic (which is exactly to be expected) and that there is some grouping of variables between -1 and 1 (which is coming from the normal variation we included in the rng.normal() command.)
+
+(c)
+```{python}
+
+df = pd.DataFrame({"y": y,
+                   "x": x,
+                   "x2": np.power(x, 2),
+                   "x3": np.power(x, 3),
+                   "x4": np.power(x, 4)})
+# i. X only
+
+model = LinearRegression()
+
+squared_errors = []
+
+for i in df.index:
+    train = df.iloc[df.index != i, :]
+    test = df.iloc[df.index == i, :]
+
+    model.fit(np.array(train["x"]).reshape(-1, 1), np.array(train["y"]))
+    test_predicted = model.predict(np.array(test["x"]).reshape(-1,1))
+    test_actual = test["y"]
+    squared_error = np.power(test_predicted - test_actual, 2)
+
+    squared_errors.append(squared_error)
+
+# From the squared errors, get the Mean Squared Error (MSE)
+print(f'MSE using LOOCV: {round(np.mean(squared_errors), 2)}')
+```
+
+```{python}
+# ii. X and X^2
+
+def model(df, features, target):
+    squared_errors = []
+    df = sm.add_constant(df)
+    features.append("const")
+
+    for i in df.index:
+        train = df.iloc[df.index != i, :]
+        test = df.iloc[df.index == i, :]
+
+        model = sm.OLS(train[features], train[target])
+        test_predicted = model.predict(test[features])
+        test_actual = test.loc[i, target]
+        squared_error = np.power(test_predicted - test_actual, 2)
+
+        squared_errors.append(squared_error[0])
+    mse = round(np.mean(squared_errors), 2)
+    se = np.std(squared_errors)
+    return mse, se
+
+mse = model(df, ["x", "x2"], "y")[0]
+se = model(df, ["x", "x2"], "y")[1]
+print("x and x^2")
+print(f"MSE: {mse}")
+print(f"SE: {se}")
+print()
+
+# iii. X, X^2, and X^3
+mse = model(df, ["x", "x2", "x3"], "y")[0]
+se = model(df, ["x", "x2", "x3"], "y")[1]
+print("x, x^2, and x^3")
+print(f"MSE: {mse}")
+print(f"SE: {se}")
+print()
+
+# iii. X, X^2, X^3, and X^4
+mse = model(df, ["x", "x2", "x3", "x4",],"y")[0]
+se = model(df, ["x", "x2", "x3", "x4",],"y")[1]
+print("x, x^2, x^3, and x^4")
+print(f"MSE: {mse}")
+print(f"SE: {se}")
+
+```
+
+(d)
+I'm not setting a random seed because it doesnt matter if we set a random seed or not. The MSE will be the same with LOOCV because we are iterating through every observation, threefore our cross validation algorithm will contain every sample, which means that regardless of the random seed, we will end up with the same value if we were to run the code twice. There is no random variation in the MSE because we iterate through and average across all observations.
+
+(e)
+The model that contained only X and X^2 had the smallest error, which is to be expected because this is closest to true undrelying relationship of the data generating process. The other models had higher MSE because they began to over fit to the noise of the random number generator we included in the data generating process.
+
+(d)
+seem to be significant.
+
+# 3.
+```{python}
+
+
+```
