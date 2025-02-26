@@ -1,0 +1,88 @@
+---
+title: "Mini-Project-3"
+format: pdf
+---
+
+# 3.
+(1)
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import statsmodels.api as sms
+
+os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Mini-Project-3")
+
+covid_df = pd.read_csv("Data-Covid003.csv", encoding = 'latin1')
+
+var_des = pd.read_excel("PPHA_30545_MP03-Variable_Description.xlsx")
+var_list = list(var_des["Variable"])
+var_list.append("county")
+var_list.append("state")
+
+covid_df = covid_df[covid_df.columns[covid_df.columns.isin(var_list)]]
+covid_df.head()
+```
+
+(2)
+```{python}
+covid_df.describe()
+```
+
+(3)
+```{python}
+pd.set_option("display.max_columns", None)
+missing_values = pd.DataFrame(np.sum(covid_df.isna(), axis = 0), columns = ["NA's"])
+print(f"there are some columns with missing values: {missing_values["NA's"].unique()}")
+
+covid_df = covid_df.dropna()
+```
+
+(4)
+```{python}
+for state in covid_df["state"].unique():
+    covid_df[state] = np.where(covid_df["state"] == state, 1, 0)
+```
+
+(5)
+```{python}
+from sklearn.model_selection import train_test_split
+
+X = covid_df.loc[:, ~covid_df.columns.isin(["deathspc", "county", "state"])]
+y = covid_df.loc[:, "deathspc"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = .2, random_state = 11)
+```
+
+(6)
+(a)
+```{python}
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred_train = model.predict(X_train)
+mse_train = round(np.mean((y_train - y_pred_train)**2), 2)
+
+y_pred_test = model.predict(X_test)
+mse_test = round(np.mean((y_test - y_pred_test)**2), 2)
+
+print(f"MSE train: {mse_train}")
+print(f"MSE test: {mse_test}")
+```
+
+(b)
+There is potential for overfitting because, given the large number of variables (112) that we are using in our dataset, each variable is treated by the model equally in terms of prediction power.  Therefore the variables that actually have low prediction power would over-influence our predcitions, which would make us overfit to the training set. 
+
+We also have evidence that we might be overfitting, as the training MSE and the test MSE demonstrate a nearly ~40% difference. This would indicate that our OLS model is doing well in fitting training data, but might not be doing as well as possible to new data.
+
+(7)
+(a)
+```{python}
+from sklearn.linear_model import Lasso, Ridge
+from sklearn.model_selection import KFold
+
+```
