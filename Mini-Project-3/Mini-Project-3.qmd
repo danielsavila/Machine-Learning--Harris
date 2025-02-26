@@ -11,6 +11,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import statsmodels.api as sms
+from sklearn.linear_model import Lasso, Ridge
+from sklearn.model_selection import KFold, cross_val_score, GridSearchCV
 
 os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Mini-Project-3")
 
@@ -80,9 +82,144 @@ There is potential for overfitting because, given the large number of variables 
 We also have evidence that we might be overfitting, as the training MSE and the test MSE demonstrate a nearly ~40% difference. This would indicate that our OLS model is doing well in fitting training data, but might not be doing as well as possible to new data.
 
 (7)
-(a)
+(a), (b)
 ```{python}
-from sklearn.linear_model import Lasso, Ridge
-from sklearn.model_selection import KFold
+#setting up the grid search for hyperparameters
+
+lasso = Lasso()
+ridge = Ridge()
+
+alpha_param = np.power(10, (np.linspace(-2, 1, 100)))
+
+grid_search_lasso = GridSearchCV(lasso, alpha_param)
+grid_search_ridge = GridSearchCV(ridge, alpha_param)
+
+#Creating a parameters grid
+param_grid = [{
+    'alpha': alpha_param
+}]
+
+#running this for lasso first
+#Running Grid Search over the alpha (regularization) parameter
+kfcv = KFold(n_splits=10, random_state = 25, shuffle=True)
+grid_search_lasso = GridSearchCV(lasso, param_grid, cv=kfcv, scoring='neg_mean_squared_error')
+grid_search_lasso.fit(X_train, y_train)
+
+# Extract results for all tested alphas
+tested_alphas = []
+mean_vec_lasso = []
+std_test_score = []
+
+for params in grid_search_lasso.cv_results_["params"]:
+    tested_alphas.append(params['alpha'])
+
+for mse in grid_search_lasso.cv_results_["mean_test_score"]:
+    mean_vec_lasso.append(-mse)
+
+for std in grid_search_lasso.cv_results_["std_test_score"]:
+    std_test_score.append(std)
+
+
+# Store mean and standard deviation values
+results_cv_lasso = pd.DataFrame({'alpha': tested_alphas, 'MSE': mean_vec_lasso, "STD": std_test_score})
+results_cv_lasso[results_cv_lasso["MSE"] == 1.3610568020385299]
+
+
+#now ridge
+
+grid_search_ridge = GridSearchCV(ridge, param_grid, cv=kfcv, scoring='neg_mean_squared_error')
+grid_search_ridge.fit(X_train, y_train)
+
+# Extract results for all tested alphas
+tested_alphas = []
+mean_vec_ridge = []
+std_test_score = []
+
+for params in grid_search_ridge.cv_results_["params"]:
+    tested_alphas.append(params['alpha'])
+
+for mse in grid_search_ridge.cv_results_["mean_test_score"]:
+    mean_vec_ridge.append(-mse)
+
+for std in grid_search_ridge.cv_results_["std_test_score"]:
+    std_test_score.append(std)
+
+
+# Store mean and standard deviation values
+results_cv_ridge = pd.DataFrame({'alpha': tested_alphas, 'MSE': mean_vec_ridge, "STD": std_test_score})
+```
+
+(c)
+```{python}
+
+min_mse_ridge = results_cv_ridge[results_cv_ridge["MSE"] == results_cv_ridge["MSE"].min()]
+min_mse_lasso = results_cv_lasso[results_cv_lasso["MSE"] == results_cv_lasso["MSE"].min()]
+
+#lasso plot
+plt.scatter(results_cv_lasso["alpha"], results_cv_lasso["MSE"])
+plt.scatter(min_mse_lasso["alpha"], min_mse_lasso["MSE"], color = "red")
+plt.title("Lasso hyperparameter tuning")
+plt.xlabel("alpha")
+plt.xticks((np.arange(0, 10.5, .5)), rotation = 45)
+plt.ylabel("MSE")
+plt.show()
+
+#ridge plot
+plt.scatter(results_cv_ridge["alpha"], results_cv_ridge["MSE"])
+plt.scatter(min_mse_ridge["alpha"], min_mse_ridge["MSE"], color = "red")
+plt.title("Ridge hyperparameter tuning")
+plt.xlabel('alpha')
+plt.xticks((np.arange(0, 10.5, .5)), rotation = 45)
+plt.ylabel("MSE")
+plt.show()
 
 ```
+
+(d)
+```{python}
+print(f"min MSE and given alpha, ridge:")
+print(min_mse_ridge)
+print()
+print(f"min MSE and given alpha, lasso:")
+print(min_mse_lasso)
+
+```
+
+(e)
+```{python}
+#training lasso first
+lasso = Lasso(alpha = min_mse_lasso.iloc[0, 0])
+lasso.fit(X_train, y_train)
+lasso_pred = lasso.predict(X_test)
+lasso_mse = mean_squared_error(y_test, lasso_pred)
+
+lasso_pred_train = lasso.predict(X_train)
+lasso_mse_train = mean_squared_error(y_train, lasso_pred_train)
+
+#ridge next
+ridge = Ridge(alpha = min_mse_ridge.iloc[0, 0])
+ridge.fit(X_train, y_train)
+ridge_pred = ridge.predict(X_test)
+ridge_mse = mean_squared_error(y_test, ridge_pred)
+
+ridge_pred_train = ridge.predict(X_train)
+ridge_mse_train = mean_squared_error(y_train, ridge_pred_train)
+
+
+```
+
+(8)
+```{python}
+print(f"train lasso mse: {round(lasso_mse_train, 3)}")
+print(f"optimized test lasso mse: {round(lasso_mse, 3)}")
+print()
+print(f"train ridge mse: {round(ridge_mse_train, 3)}")
+print(f"optimized test ridge mse: {round(ridge_mse, 3)}")
+print()
+print(f"train OLS mse: {round(mse_train, 2)}")
+print(f"optimized test OLS mse: {round(mse_test, 3)}")
+```
+
+It seems that the lasso and ridge methods do not provide a significant amount of benefit relative to the OLS model that we estimated in the training set. However, ridge does seem to improve in terms of MSE when using new data from the test set. Therefore since the ridge method and the OLS method are pretty close, that indicates that almost all of the variables have some importance when it comes to prediction in this context. If this were not the case, the fact that Lasso sends some variables to zero would make it such that our test MSE is lower than the OLS method, which would indicate that there are some variables that do not have any predictive power in our model.
+
+Therefore I would most likely recommend to the CDC the Ridge method, since its train mse is similar to OLS, but its test mse is slightly lower than OLS, which indicates that it functions better with new data than OLS would. 
