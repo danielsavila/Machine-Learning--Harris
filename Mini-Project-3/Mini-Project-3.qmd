@@ -2,11 +2,14 @@
 title: "Mini-Project-3"
 format: pdf
 ---
+Daniel Avila
+
 
 # 3.
 (1)
 ```{python}
 import pandas as pd
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -22,21 +25,23 @@ var_des = pd.read_excel("PPHA_30545_MP03-Variable_Description.xlsx")
 var_list = list(var_des["Variable"])
 var_list.append("county")
 var_list.append("state")
+var_list.remove("casespc")
 
 covid_df = covid_df[covid_df.columns[covid_df.columns.isin(var_list)]]
-covid_df.head()
 ```
 
 (2)
 ```{python}
-covid_df.describe()
+pd.set_option("display.max_rows", None)
+summary_stats = covid_df.describe().T
+summary_stats = summary_stats.loc[:, ["count", "mean", "std"]]
+summary_stats
 ```
 
 (3)
 ```{python}
-pd.set_option("display.max_columns", None)
 missing_values = pd.DataFrame(np.sum(covid_df.isna(), axis = 0), columns = ["NA's"])
-print(f"there are some columns with missing values: {missing_values["NA's"].unique()}")
+print(f"there are some columns with missing values: {missing_values["NA's"].to_markdown()}")
 
 covid_df = covid_df.dropna()
 ```
@@ -79,15 +84,21 @@ print(f"MSE test: {mse_test}")
 (b)
 There is potential for overfitting because, given the large number of variables (112) that we are using in our dataset, each variable is treated by the model equally in terms of prediction power.  Therefore the variables that actually have low prediction power would over-influence our predcitions, which would make us overfit to the training set. 
 
-We also have evidence that we might be overfitting, as the training MSE and the test MSE demonstrate a nearly ~40% difference. This would indicate that our OLS model is doing well in fitting training data, but might not be doing as well as possible to new data.
+We also have evidence that we might be overfitting, as the training MSE and the test MSE demonstrate a nearly ~41% difference. This would indicate that our OLS model is doing well in fitting training data, but might not be doing as well as possible to new data.
 
 (7)
 (a), (b)
 ```{python}
 #setting up the grid search for hyperparameters
+from sklearn.preprocessing import StandardScaler
 
 lasso = Lasso()
 ridge = Ridge()
+
+scaler= StandardScaler()
+scaler.fit(X_train)
+X_train=scaler.transform(X_train)
+X_test= scaler.transform(X_test)
 
 alpha_param = np.power(10, (np.linspace(-2, 1, 100)))
 
@@ -122,8 +133,6 @@ for std in grid_search_lasso.cv_results_["std_test_score"]:
 
 # Store mean and standard deviation values
 results_cv_lasso = pd.DataFrame({'alpha': tested_alphas, 'MSE': mean_vec_lasso, "STD": std_test_score})
-results_cv_lasso[results_cv_lasso["MSE"] == 1.3610568020385299]
-
 
 #now ridge
 
@@ -151,7 +160,6 @@ results_cv_ridge = pd.DataFrame({'alpha': tested_alphas, 'MSE': mean_vec_ridge, 
 
 (c)
 ```{python}
-
 min_mse_ridge = results_cv_ridge[results_cv_ridge["MSE"] == results_cv_ridge["MSE"].min()]
 min_mse_lasso = results_cv_lasso[results_cv_lasso["MSE"] == results_cv_lasso["MSE"].min()]
 
@@ -160,7 +168,7 @@ plt.scatter(results_cv_lasso["alpha"], results_cv_lasso["MSE"])
 plt.scatter(min_mse_lasso["alpha"], min_mse_lasso["MSE"], color = "red")
 plt.title("Lasso hyperparameter tuning")
 plt.xlabel("alpha")
-plt.xticks((np.arange(0, 10.5, .5)), rotation = 45)
+plt.xticks((np.arange(0, results_cv_lasso["alpha"].max() + 1, .5)), rotation = 45)
 plt.ylabel("MSE")
 plt.show()
 
@@ -169,7 +177,7 @@ plt.scatter(results_cv_ridge["alpha"], results_cv_ridge["MSE"])
 plt.scatter(min_mse_ridge["alpha"], min_mse_ridge["MSE"], color = "red")
 plt.title("Ridge hyperparameter tuning")
 plt.xlabel('alpha')
-plt.xticks((np.arange(0, 10.5, .5)), rotation = 45)
+plt.xticks((np.arange(0, results_cv_ridge["alpha"].max() + 1, .5)), rotation = 45)
 plt.ylabel("MSE")
 plt.show()
 
@@ -220,6 +228,4 @@ print(f"train OLS mse: {round(mse_train, 2)}")
 print(f"optimized test OLS mse: {round(mse_test, 3)}")
 ```
 
-It seems that the lasso and ridge methods do not provide a significant amount of benefit relative to the OLS model that we estimated in the training set. However, ridge does seem to improve in terms of MSE when using new data from the test set. Therefore since the ridge method and the OLS method are pretty close, that indicates that almost all of the variables have some importance when it comes to prediction in this context. If this were not the case, the fact that Lasso sends some variables to zero would make it such that our test MSE is lower than the OLS method, which would indicate that there are some variables that do not have any predictive power in our model.
-
-Therefore I would most likely recommend to the CDC the Ridge method, since its train mse is similar to OLS, but its test mse is slightly lower than OLS, which indicates that it functions better with new data than OLS would. 
+It seems that the lasso and ridge methods do not provide a significant amount of benefit relative to the OLS model that we estimated in the training set. However, ridge does seem to improve in terms of MSE when using new data from the test set. However, in testing performance relative to the test set, we find that the Lasso method does better when ingesting new data. Because the lasso method can send some variables to zero, we see that there are some variablse within our model that do not provide us with any predictive power. In relation with the CDC, we would recommend using the lasso method since it works better in predicting out of sample values.
