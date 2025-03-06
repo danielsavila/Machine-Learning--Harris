@@ -1,0 +1,18 @@
+---
+title: "Mini-Project-3"
+format: pdf
+---
+
+# 3.
+(1)
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Mini-Project-3")
+
+covid_df = pd.read_csv("Data-Covid003.csv", encoding = 'latin1')
+
+```
