@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import make_pipeline
 
-os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Problem-Set-4")
+os.chdir("C:/Users/AVILA/OneDrive/Documents/GitHub/Machine-Learning--Harris/Problem-Set-4")
 
 college = pd.read_csv('Data-College.csv')
 oj = pd.read_csv("Data-OJ.csv")
@@ -110,3 +110,159 @@ plt.show()
 
 print("using the elbow method, we chose the model with ~6 principle components")
 ```
+
+(e)
+
+(2)
+will follow up with these drawings later in the pdf
+
+
+(3)
+(a)
+```{python}
+oj["Purchase"] = np.where(oj["Purchase"] == "CH", 1, 0)
+oj["Store7"] = np.where(oj["Store7"] == "Yes", 1, 0)
+y = oj.loc[:, "Purchase"]
+x = oj.loc[:, "WeekofPurchase":]
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size = .3, random_state = 3)
+
+```
+
+
+(b)
+```{python}
+from sklearn.tree import DecisionTreeClassifier
+
+tree = DecisionTreeClassifier(random_state = 2)
+tree.fit(X_train, y_train)
+train_score = tree.score(X_train, y_train)
+test_score = tree.score(X_test, y_test)
+
+print(f"Error rate: {1-train_score}")
+
+```
+
+
+(c)
+```{python}
+#plotting the full tree
+from sklearn.tree import plot_tree
+
+plt.figure(figsize = (12,12))
+plot_tree(tree, fontsize = 10, feature_names = X_train.columns.tolist(), filled = True)
+plt.show()
+```
+
+```{python}
+# plotting the smaller tree
+
+tree = DecisionTreeClassifier(random_state = 2, max_depth = 3)
+tree.fit(X_train, y_train)
+plt.figure(figsize = (12,12))
+plot_tree(tree, fontsize = 10, feature_names = X_train.columns.tolist(), filled = True)
+plt.show()
+
+```
+
+This tree only has 8 terminal nodes. Reading the left most leaf, we have a gini value of .032, which indicates that almost all of the 61 samples within that node are of the same class. Finally, the sample values range from 60 to 1.
+
+(d)
+```{python}
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
+y_pred = tree.predict(X_test)
+cm = confusion_matrix(y_test, y_pred)
+
+# had to manually add since heatmap was not displaying correctly
+ax = sns.heatmap(cm, cmap = "Blues")
+for i in range(cm.shape[0]):
+    for j in range(cm.shape[1]):
+        ax.text(j + 0.5, i + 0.5, f'{cm[i, j]}', ha='center', va='center', color='black', fontsize=12)
+
+plt.show()
+
+print(f"Test Error Rate: {round((1-tree.score(X_test, y_test))*100, 2)}%")
+```
+
+(e)
+```{python}
+from sklearn.model_selection import GridSearchCV
+
+dtree = DecisionTreeClassifier(
+    random_state = 2
+)
+path = dtree.cost_complexity_pruning_path(X_train, y_train)
+ccp_alpha = path.ccp_alphas
+parameters = {"ccp_alpha": ccp_alpha}
+
+kf = KFold(n_splits = 5, shuffle = True, random_state = 13)
+cv_tree = GridSearchCV(dtree, parameters, cv = kf, scoring = "accuracy")
+cv_tree = cv_tree.fit(X_train, y_train)
+
+cv_scores = []
+for mean_score in cv_tree.cv_results_["mean_test_score"]:
+    cv_scores.append(1-mean_score)
+
+sns.lineplot(x = ccp_alpha, y = cv_scores)
+plt.xlabel("alpha used for cross validation")
+plt.ylabel("error rate")
+plt.show()
+
+df = pd.DataFrame({"error rate":cv_scores,
+                    "alpha": path.ccp_alphas})
+
+df[df["error rate"] == df["error rate"].min()]
+```
+
+alpha = .013793 corresponds to the lowest error rate.
+
+(f)
+```{python}
+tree_size = []
+
+for a in ccp_alpha:
+    clf_a = DecisionTreeClassifier(ccp_alpha = a, random_state = 2)
+    clf_a.fit(X_train, y_train)
+    tree_size.append(clf_a.get_n_leaves())
+
+fig, ax = plt.subplots(figsize=(6, 6))
+sns.lineplot(x = ccp_alpha, y = tree_size, markersize = 10)
+ax.set_xlabel("alpha values")
+ax.set_ylabel("# of leaves on decision tree")
+ax.set_title("tree size as a function of alpha")
+plt.show()
+
+df_t = pd.DataFrame({"tree size": tree_size,
+                    "alpha": ccp_alpha})
+df = df.merge(df_t, how = "left", on = "alpha")
+
+df[df["error rate"] == df["error rate"].min()]
+```
+
+The tree with the lowest error rate, as previously identified, is the tree with 4 terminal nodes. The reaosn why alpha affects the tree size and classification rate is because alpha is a penalty term that incentivizes the model to have fewer leaves by pruning away models that are too "leafy". Therefore trees with too many leaves will overfit the data, while those who have too few leaves will have too high of a variance.
+
+
+(g)
+```{python}
+pruned_tree = DecisionTreeClassifier(ccp_alpha = .013793, random_state = 2)
+pruned_tree.fit(X_train, y_train)
+plot_tree(pruned_tree, fontsize = 5, feature_names = X_train.columns.to_list(), filled = True)
+plt.show()
+```
+
+(h)
+```{python}
+pruned_train_score = pruned_tree.score(X_train, y_train)
+(1-pruned_train_score), (1-train_score)
+```
+
+The unrestricted tree has a lower error rate compared to the pruned model when fitted to the trained data. This is to be expected - the unrestricted model will overfit the training data.
+
+(i)
+```{python}
+pruned_test_score = pruned_tree.score(X_test, y_test)
+(1-pruned_test_score), (1-test_score)
+```
+
+In evaluating fit to the test data, the pruned tree performs better than the unrestricted model. As said earlier, the unrestricted tree begins to overfit the data and the pruned model does better when generalizing to new data, which is exactly what we are seeing here in these results. 
