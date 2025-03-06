@@ -9,16 +9,20 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.model_selection import train_test_split
 import os
 import statsmodels.api as sm
 import seaborn as sns
 
 os.chdir("C:/Users/AVILA/OneDrive/Documents/GitHub/Machine-Learning--Harris/Problem-Set-3")
+#os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Problem-set-3")
 
 default = pd.read_csv("Data-Default.csv")
 default["student"] = np.where(default["student"] == "No", 0, 1)
 default["default"] = np.where(default["default"] == "Yes", 1, 0)
+default = default.reset_index()
+
 ```
 
 
@@ -38,16 +42,165 @@ so small the summary function is regestering it as 0.
 
 (b)
 ```{python}
-def boot_fn(df, n, seed):
-    columns = df.columns
+
+def get_indices(data, n, seed):
     rng = np.random.default_rng(seed)    # allows you to set your seed
-    indices = rng.choice(df.index,     # Use the dataset's indices as the input
+    indices = rng.choice(data.index,     # Use the dataset's indices as the input
                          int(n),         # Number of indices per sample
                          replace=True    # Draw samples with replacement
                         )
     return indices
 
-seed = 23
-boot_fn(default, default.shape[0], seed)
+def boot_fn(df, index):
+    sampled_df = df.loc[index]
+    y = sampled_df["default"]
+    x = sampled_df[["income", "balance"]]
+    x = sm.add_constant(x)
+
+    model = sm.Logit(y, x)
+    results = model.fit(disp = False)
+    coefficients = results.params
+    income = coefficients.iloc[1]
+    balance = coefficients.iloc[2]
+    return income, balance
+
+income, balance = boot_fn(default, get_indices(default, 1000, 32))
+
+print(f"income: {income}")
+print(f"balance: {balance}")
+
+
+```
+
+(c)
+```{python}
+bootstrap_means_income = np.zeros(1000)
+bootstrap_means_balance = np.zeros(1000)
+
+for i in range(1000):
+    chosen_index = np.random.choice(default["index"], size = default.shape[0], replace = True)
+    sample = default.loc[chosen_index]
+    result = boot_fn(sample, sample["index"])
+    bootstrap_means_income[i] = result[0]
+    bootstrap_means_balance[i] = result[1]
+
+print()
+print(f"Mean coefficient value, income:  {np.mean(bootstrap_means_income)}")
+print(f"Mean coefficient value, balance: {np.mean(bootstrap_means_balance)}")
+print()
+print(f"Std Income: {np.std(bootstrap_means_income)}")
+print(f"Std Balance: {np.std(bootstrap_means_balance)}")
+
+```
+
+(d)
+These values are nearly spot on, with the standard errors being very similar as well. The only thing ot notice is that the standard error of the inome variable using bootstrapping is signfiicantly larger than that provided via the regression estimate, which indicates that there is more uncertainty from the bootstrapping method. 
+
+# 2. 
+(a)
+```{python}
+rng = np.random.default_rng(1)
+x = rng.normal(size = 100)
+y = x - 2 * x**2 + rng.normal(size = 100)
+
+```
+
+n is the size of the dataset, which in this case is 100. P is the parameters, of which there are 2, X, and x^2. 
+
+(b)
+```{python}
+plt.scatter(x, y)
+plt.show()
+```
+
+The relationship between the two variables is parabolic (which is exactly to be expected) and that there is some grouping of variables between -1 and 1 (which is coming from the normal variation we included in the rng.normal() command.)
+
+(c)
+```{python}
+
+df = pd.DataFrame({"y": y,
+                   "x": x,
+                   "x2": np.power(x, 2),
+                   "x3": np.power(x, 3),
+                   "x4": np.power(x, 4)})
+# i. X only
+
+model = LinearRegression()
+
+squared_errors = []
+
+for i in df.index:
+    train = df.iloc[df.index != i, :]
+    test = df.iloc[df.index == i, :]
+
+    model.fit(np.array(train["x"]).reshape(-1, 1), np.array(train["y"]))
+    test_predicted = model.predict(np.array(test["x"]).reshape(-1,1))
+    test_actual = test["y"]
+    squared_error = np.power(test_predicted - test_actual, 2)
+
+    squared_errors.append(squared_error)
+
+# From the squared errors, get the Mean Squared Error (MSE)
+print(f'MSE using LOOCV: {round(np.mean(squared_errors), 2)}')
+```
+
+```{python}
+# ii. X and X^2
+
+def model(df, features, target):
+    squared_errors = []
+    df = sm.add_constant(df)
+    features.append("const")
+
+    for i in df.index:
+        train = df.iloc[df.index != i, :]
+        test = df.iloc[df.index == i, :]
+
+        model = sm.OLS(train[features], train[target])
+        test_predicted = model.predict(test[features])
+        test_actual = test.loc[i, target]
+        squared_error = np.power(test_predicted - test_actual, 2)
+
+        squared_errors.append(squared_error[0])
+    mse = round(np.mean(squared_errors), 2)
+    se = np.std(squared_errors)
+    return mse, se
+
+mse = model(df, ["x", "x2"], "y")[0]
+se = model(df, ["x", "x2"], "y")[1]
+print("x and x^2")
+print(f"MSE: {mse}")
+print(f"SE: {se}")
+print()
+
+# iii. X, X^2, and X^3
+mse = model(df, ["x", "x2", "x3"], "y")[0]
+se = model(df, ["x", "x2", "x3"], "y")[1]
+print("x, x^2, and x^3")
+print(f"MSE: {mse}")
+print(f"SE: {se}")
+print()
+
+# iii. X, X^2, X^3, and X^4
+mse = model(df, ["x", "x2", "x3", "x4",],"y")[0]
+se = model(df, ["x", "x2", "x3", "x4",],"y")[1]
+print("x, x^2, x^3, and x^4")
+print(f"MSE: {mse}")
+print(f"SE: {se}")
+
+```
+
+(d)
+I'm not setting a random seed because it doesnt matter if we set a random seed or not. The MSE will be the same with LOOCV because we are iterating through every observation, threefore our cross validation algorithm will contain every sample, which means that regardless of the random seed, we will end up with the same value if we were to run the code twice. There is no random variation in the MSE because we iterate through and average across all observations.
+
+(e)
+The model that contained only X and X^2 had the smallest error, which is to be expected because this is closest to true undrelying relationship of the data generating process. The other models had higher MSE because they began to over fit to the noise of the random number generator we included in the data generating process.
+
+(d)
+seem to be significant.
+
+# 3.
+```{python}
+
 
 ```

@@ -1,0 +1,112 @@
+---
+title: "Problem Set 4"
+format: pdf
+---
+
+
+Daniel Avila
+
+```{python}
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.decomposition import PCA
+from sklearn.metrics import mean_squared_error
+from sklearn.pipeline import make_pipeline
+
+os.chdir("C:/Users/danie/Documents/GitHub/Machine-Learning--Harris/Problem-Set-4")
+
+college = pd.read_csv('Data-College.csv')
+oj = pd.read_csv("Data-OJ.csv")
+
+#dropping the Unnamed:0 column (as this only has the name of the university)
+# turning the Private column into a binary (1 = yes, 0 = no)
+
+college = college.drop("Unnamed: 0", axis = 1)
+college["Private"] = np.where(college["Private"] == "Yes", 1, 0)
+
+```
+
+# 1.
+(a)
+
+```{python}
+#train test split, scaling afterwards
+y = college.loc[:, "Apps"]
+X = college.loc[:, ~college.columns.isin(["Apps"])]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = .5, random_state= 37)
+
+scaler = StandardScaler()
+scaler.fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test)
+```
+
+(b)
+```{python}
+ols = LinearRegression()
+ols.fit(X_train, y_train)
+y_pred = ols.predict(X_test)
+
+mse_test = mean_squared_error(y_test, y_pred)
+print(f"ols model test mse: {round(mse_test, 3)}")
+```
+
+(c)
+```{python}
+m_dict = {}
+
+for m in range(1, len(college.columns)):
+    pca = make_pipeline(StandardScaler(),
+                        PCA(n_components = m),
+                        LinearRegression()).fit(X_train, y_train)
+
+    m_dict[m] = round(np.mean(-1*cross_val_score(pca,
+                                           X_train, y_train,
+                                           cv=KFold(n_splits=10,
+                                                    random_state=1,
+                                                    shuffle=True), 
+                                                    scoring='neg_mean_squared_error')), 2)
+
+m_dict = pd.DataFrame({"components":m_dict.keys(), 
+                       "cv_mse":m_dict.values()})
+
+plt.plot(m_dict["components"], m_dict["cv_mse"])
+plt.xlabel("# of PCA components")
+plt.ylabel("MSE")
+plt.show()
+
+print(m_dict[m_dict["components"] == 2])
+print()
+print("using the elbow method, we chose either the model with 2 or 4 principle components.")
+```
+
+(d)
+```{python}
+#fitting a partial least squares model
+from sklearn.cross_decomposition import PLSRegression
+
+error_plsr = {}
+
+for m in range(1, len(college.columns)):
+    plsr = PLSRegression(n_components = m).fit(X_train, y_train)
+    plsr_pred = plsr.predict(X_train)
+    mse = round(mean_squared_error(y_train, plsr_pred), 3)
+    error_plsr[m] = mse
+
+plsr_dict = pd.DataFrame({"components":error_plsr.keys(), 
+                          "mse":error_plsr.values()})
+plsr_dict
+
+plt.plot(plsr_dict["components"], plsr_dict["mse"])
+plt.xlabel(" # of PLSR Components")
+plt.ylabel("MSE")
+plt.show()
+
+print("using the elbow method, we chose the model with ~6 principle components")
+```

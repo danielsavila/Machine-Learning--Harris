@@ -72,7 +72,7 @@ import numpy as np
 import os
 import seaborn as sns
 
-#os.chdir("C:/Users/AVILA/OneDrive/Documents/Github/Machine-Learning--Harris/Problem-Set-2")
+os.chdir("C:/Users/AVILA/OneDrive/Documents/Github/Machine-Learning--Harris/Problem-Set-2")
 
 auto_df = pd.read_csv("Data-Auto.csv")
 auto_df = auto_df.drop("Unnamed: 0", axis = 1)
@@ -106,6 +106,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
 X = auto_df.loc[:, ["horsepower", "weight", "acceleration", "displacement"]]
 X_train, X_test, y_train, y_test = train_test_split(X, auto_df["mpg01"], test_size = .5, random_state = 22)
+
 ```
 
 (d)
